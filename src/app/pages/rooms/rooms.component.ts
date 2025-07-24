@@ -82,6 +82,12 @@ export class RoomsComponent implements OnInit {
   copiedComponent: CanvasComponent | null = null;
   cutMode: boolean = false;
 
+  isRecording: boolean = false;
+  isProcessingAudio: boolean = false;
+  mediaRecorder: MediaRecorder | null = null;
+  audioChunks: Blob[] = [];
+  recognition: any = null;
+
   //Find de instancias
   constructor(
     private route: ActivatedRoute,
@@ -1574,7 +1580,7 @@ selectCell(cell: CanvasComponent, event: MouseEvent): void {
 
   makeHttpRequest() {
     const body = { question: this.questionText };
-    this.http.post('http://localhost:5000/query', body).subscribe({
+    this.http.post('https://openai-sw1.onrender.com/query', body).subscribe({
       next: (response: any) => {
         try {
           // Parsear la respuesta y asignarla a jsonEjemplo
@@ -1632,7 +1638,7 @@ selectCell(cell: CanvasComponent, event: MouseEvent): void {
   cargarimagenia(promptText: string) {
     const body = { question: promptText };
     // this.http.post('http://localhost:5000/query', body).subscribe({
-    this.http.post('http://localhost:5000/query', body).subscribe({
+    this.http.post('https://openai-sw1.onrender.com/query', body).subscribe({
       next: (response: any) => {
         try {
           const components = JSON.parse(response.response);
@@ -1679,7 +1685,7 @@ selectCell(cell: CanvasComponent, event: MouseEvent): void {
     formData.append('prompt', this.imagePrompt || 'Describe la imagen');
 
     // this.http.post<any>('http://localhost:5000/analyze-image', formData).subscribe({
-    this.http.post<any>('http://localhost:5000/analyze-image', formData).subscribe({
+    this.http.post<any>('https://openai-sw1.onrender.com/analyze-image', formData).subscribe({
       next: (response) => {
         this.httpResponse = response.response;
         // this.showResponseModal = true;
@@ -1693,4 +1699,62 @@ selectCell(cell: CanvasComponent, event: MouseEvent): void {
       }
     });
   }
+
+  openQuestionModal() {
+    this.questionText = '';
+    this.showQuestionModal = true;
+  }
+
+  closeQuestionModal() {
+    this.showQuestionModal = false;
+    this.questionText = '';
+  }
+
+  // Método para alternar la grabación de voz y reconocimiento de voz
+  toggleRecording(): void {
+    if (this.isRecording) {
+      // Detener grabación
+      this.isRecording = false;
+      this.isProcessingAudio = true;
+      if (this.recognition) {
+        this.recognition.stop();
+      }
+    } else {
+      // Iniciar grabación
+      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+      if (!SpeechRecognition) {
+        alert('El reconocimiento de voz no es compatible con este navegador. Prueba en Chrome.');
+        return;
+      }
+      this.recognition = new SpeechRecognition();
+      this.recognition.lang = 'es-ES';
+      this.recognition.interimResults = false;
+      this.recognition.maxAlternatives = 1;
+      this.isRecording = true;
+      this.isProcessingAudio = false;
+      this.questionText = '';
+
+      this.recognition.onresult = (event: any) => {
+        const transcript = event.results[0][0].transcript;
+        this.questionText = transcript;
+        this.isProcessingAudio = false;
+        this.isRecording = false;
+        this.cdr.detectChanges();
+      };
+      this.recognition.onerror = (event: any) => {
+        this.isProcessingAudio = false;
+        this.isRecording = false;
+        this.questionText = '';
+        alert('Error en el reconocimiento de voz: ' + event.error);
+        this.cdr.detectChanges();
+      };
+      this.recognition.onend = () => {
+        this.isProcessingAudio = false;
+        this.isRecording = false;
+        this.cdr.detectChanges();
+      };
+      this.recognition.start();
+    }
+  }
+
 }

@@ -912,7 +912,7 @@ export class PropiedadesComponent implements OnInit {
   }
 
   downloadAngularProject() {
-    const url = `http://localhost:3000/api/export/flutter/${this.roomCode}`;
+    const url = `https://back2-mesa.onrender.com/api/export/flutter/${this.roomCode}`;
     window.open(url, '_blank'); // Abre la descarga del zip en otra pestaña
   }
 
